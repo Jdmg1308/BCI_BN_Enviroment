@@ -35,7 +35,7 @@ public class EEGGraphManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"Unknown band: {type}");
+            Debug.Log($"Unknown band: {type}");
         }
     }
 
@@ -63,4 +63,23 @@ public class EEGGraphManager : MonoBehaviour
             _ => null
         };
     }
+
+    public Dictionary<string, float> GetLatestAverages(int sampleCount = 30)
+    {
+        Dictionary<string, float> averages = new Dictionary<string, float>();
+        foreach (var band in bufferDict.Keys)
+        {
+            var buffer = bufferDict[band];
+            int count = Mathf.Min(sampleCount, buffer.Count);
+            if (count == 0) continue;
+
+            float sum = 0f;
+            for (int i = buffer.Count - count; i < buffer.Count; i++)
+                sum += buffer[i];
+
+            averages[band] = sum / count;
+        }
+        return averages;
+    }
+
 }

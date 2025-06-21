@@ -28,6 +28,9 @@ public class SampleApp : MonoBehaviour
     public EEGGraphManager graphManager;
     public EEGDataStream eegDataStream;
 
+    public bool simulateFakeEEG = false;  // You can toggle this in the Unity Inspector
+    private bool lastSimulateFakeEEG = false;
+
 
     //--------------------------------------
     // Public methods that gets called on UI events.
@@ -280,6 +283,29 @@ public class SampleApp : MonoBehaviour
         public float[] values;
     }
 
+    public void SimulateFakePacket(MuseDataPacketType type, float fakeValue)
+    {
+        var fakePacket = new EEGPacket
+        {
+            packetType = type,
+            values = new float[] { fakeValue }
+        };
+
+        string json = JsonUtility.ToJson(fakePacket);
+        Debug.Log($"Simulated packet JSON: {json}");
+        receiveDataPackets(json);
+    }
+
+    private void SendFakeDataBurst()
+    {
+        System.Random rnd = new System.Random();
+        SimulateFakePacket(MuseDataPacketType.ALPHA_ABSOLUTE, (float)rnd.NextDouble());
+        SimulateFakePacket(MuseDataPacketType.BETA_ABSOLUTE, (float)rnd.NextDouble());
+        SimulateFakePacket(MuseDataPacketType.DELTA_ABSOLUTE, (float)rnd.NextDouble());
+        SimulateFakePacket(MuseDataPacketType.THETA_ABSOLUTE, (float)rnd.NextDouble());
+        SimulateFakePacket(MuseDataPacketType.GAMMA_ABSOLUTE, (float)rnd.NextDouble());
+    }
+
 
     private void receiveArtifactPackets(string data)
     {
@@ -297,10 +323,25 @@ public class SampleApp : MonoBehaviour
 #if PLATFORM_STANDALONE_WIN
         LibmuseBridgeWindows.InvokeDispatchQueue();
 #endif
-        //Debug.Log("Update");
+        // FakeEEG trigger
+        if (simulateFakeEEG != lastSimulateFakeEEG)
+        {
+            if (simulateFakeEEG)
+            {
+                InvokeRepeating(nameof(SendFakeDataBurst), 2f, 0.5f);
+                Debug.Log("Started fake EEG simulation.");
+            }
+            else
+            {
+                CancelInvoke(nameof(SendFakeDataBurst));
+                Debug.Log("Stopped fake EEG simulation.");
+            }
+
+            lastSimulateFakeEEG = simulateFakeEEG;
+        }
 
         // Display the data in the UI Text field
-        //this.dataText.text = graphManager.bufferDict["ALPHA_ABSOLUTE"][graphManager.bufferDict["ALPHA_ABSOLUTE"].Count].ToString();
+        this.dataText.text = this.dataBuffer.Contains("\"packetType\":" + ((int)MuseDataPacketType.ALPHA_ABSOLUTE).ToString()) ? this.dataBuffer : this.dataText.text;
         this.connectionText.text = this.connectionBuffer;
     }
 }
